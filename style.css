@@ -844,14 +844,24 @@ a:hover {
 .empty-state, .error-state {
     text-align: center;
     padding: 3rem 1.5rem;
+    max-width: 500px;
+    margin: 2rem auto;
+    animation: fadeIn var(--transition-normal);
+}
+
+.empty-state {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.error-state {
     background-color: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    max-width: 500px;
-    margin: 2rem auto;
     box-shadow: var(--shadow-md);
-    animation: fadeIn var(--transition-normal);
 }
+
 
 .empty-state-icon, .error-state-icon {
     width: 64px;

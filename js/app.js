@@ -336,10 +336,11 @@ function renderTopicsList(topicsList) {
     const category = state.activeCategory;
     const searchVal = state.searchQuery.trim().toLowerCase();
 
-    // Filter topics by title or description
+    // Filter topics by title, description or content
     const filteredTopics = topicsList.filter(t => 
         t.Topic.toLowerCase().includes(searchVal) || 
-        t.Description.toLowerCase().includes(searchVal)
+        t.Description.toLowerCase().includes(searchVal) ||
+        (t.Content || '').toLowerCase().includes(searchVal)
     );
 
     let listHtml = '';
@@ -447,7 +448,8 @@ function renderTopicsListInner(topicsList) {
     const searchVal = state.searchQuery.trim().toLowerCase();
     const filteredTopics = topicsList.filter(t => 
         t.Topic.toLowerCase().includes(searchVal) || 
-        t.Description.toLowerCase().includes(searchVal)
+        t.Description.toLowerCase().includes(searchVal) ||
+        (t.Content || '').toLowerCase().includes(searchVal)
     );
 
     let listHtml = '';
