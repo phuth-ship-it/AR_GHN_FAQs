@@ -125,7 +125,7 @@ export function parseMarkdown(md) {
         // ── Blockquote (> …) ────────────────────────────────────────────────
         //    The `>` must appear at the start of the *original* (non-trimmed)
         //    line so we honour indentation of the quote content.
-        const blockquoteMatch = line.match(/^(\s*)>\s?(.*)$/);
+        const blockquoteMatch = line.match(/^(\s*)(?:>|&gt;)\s?(.*)$/);
         if (blockquoteMatch) {
             if (inList !== 'blockquote') {
                 closeCurrentBlock();
