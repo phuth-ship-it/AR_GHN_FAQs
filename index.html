@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>GHN Support | Trung tâm Hỗ trợ & Câu hỏi thường gặp Giao Hàng Nhanh</title>
+    <meta name="title" content="GHN Support | Trung tâm Hỗ trợ & Câu hỏi thường gặp Giao Hàng Nhanh">
+    <meta name="description" content="Hệ thống câu hỏi thường gặp FAQ của Giao Hàng Nhanh (GHN) tự động cập nhật từ Google Sheets. Tìm kiếm thông tin, quy trình, và hướng dẫn nhanh chóng.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="GHN Support | Trung tâm Hỗ trợ & Câu hỏi thường gặp Giao Hàng Nhanh">
+    <meta property="og:description" content="Hệ thống câu hỏi thường gặp FAQ của Giao Hàng Nhanh (GHN) tự động cập nhật từ Google Sheets. Tìm kiếm thông tin, quy trình, và hướng dẫn nhanh chóng.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+    
+    <!-- Custom Style System -->
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+ 
+    <!-- STICKY GLASS HEADER -->
+    <header class="header">
+        <div class="header-container">
+            <!-- Logo & Navigation -->
+            <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                <a href="#/" class="header-logo" data-link>
+                    <span class="header-logo-icon"><i data-lucide="truck" style="color: var(--color-primary);"></i></span>
+                    <span>GHN Support</span>
+                </a>
+                <!-- Breadcrumbs dynamic container -->
+                <nav aria-label="Breadcrumb">
+                    <ul id="breadcrumbs" class="nav-breadcrumbs">
+                        <!-- Injected by JavaScript -->
+                    </ul>
+                </nav>
+            </div>
+
+            <!-- Theme Toggle Switch -->
+            <button id="theme-toggle-btn" class="theme-toggle" aria-label="Thay đổi giao diện màu">
+                <svg class="theme-toggle-icon sun-icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="theme-toggle-icon moon-icon" viewBox="0 0 24 24">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- APP MAIN CONTENT WRAPPER -->
+    <div class="main-wrapper">
+        <main id="app" class="main-content">
+            <!-- Dynamically populated by JS Module Router -->
+        </main>
+
+        <!-- FOOTER SECTION -->
+        <footer class="footer">
+            <p>&copy; 2026 Giao Hàng Nhanh. Tất cả quyền được bảo lưu.</p>
+            <div class="footer-badge">
+                <span style="font-size: 0.95rem;">⚡</span>
+                <span>Powered by Google Sheets & Apps Script</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Core App Module Entrypoint -->
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
