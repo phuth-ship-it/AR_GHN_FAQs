@@ -29,7 +29,10 @@ export function parseMarkdown(md) {
     if (!md) return '';
 
     // ── Step 1: HTML-escape the raw text to prevent XSS injection ──────────
+    //    Also normalises Windows/Mac line endings (\r\n, \r) to standard \n.
     let escaped = md
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
