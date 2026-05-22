@@ -5,7 +5,7 @@
 
 // Replace this with your Google Apps Script Web App URL after deploying
 export const API_CONFIG = {
-    url: 'https://script.google.com/macros/s/AKfycbxrZ-aAX9TjmzxWe4yJ-CJaWfCuc0zCrrXWPVBQaPPeUkRJohTl8u3AExK6M_24IxmG/exec' // Empty by default to trigger the mock data fallback
+    url: 'https://script.google.com/macros/s/AKfycbzP7X6AFtno9PxVzsLUgSO9RcYtZWT0NAej8kupxijZrPtbfbq53aCW09DsVJ5Lm44LlQ/exec' // Empty by default to trigger the mock data fallback
 };
 
 const CACHE_KEY = 'faq_data_cache';
