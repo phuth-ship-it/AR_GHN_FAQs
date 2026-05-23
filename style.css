@@ -1029,3 +1029,593 @@ a:hover {
         align-self: center;
     }
 }
+
+/* ==========================================================================
+   STATEMENT SEARCH — BUTTON (Category Header)
+   Chỉ xuất hiện ở category Xu GHN
+   ========================================================================== */
+
+/* Wrapper row chứa back button + statement button cạnh nhau */
+.category-header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+/* Button "Tra cứu sao kê" — màu cam GHN, chữ trắng */
+.btn-statement-search {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: var(--font-primary);
+    background-color: var(--color-primary);
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1.1rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: var(--shadow-sm);
+    transition: background-color var(--transition-fast),
+                transform var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.btn-statement-search:hover {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-statement-search:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-statement-search svg {
+    flex-shrink: 0;
+    stroke: #ffffff;
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — PAGE LAYOUT
+   ========================================================================== */
+
+.statement-search-page {
+    animation: fadeIn var(--transition-normal);
+}
+
+/* Page header: title (left) + Quay về button (right) */
+.statement-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+}
+
+.statement-page-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.statement-title-icon {
+    width: 52px;
+    height: 52px;
+    background: var(--color-primary-light);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+
+.statement-title-icon svg {
+    stroke: var(--color-primary);
+}
+
+.statement-page-h1 {
+    font-family: var(--font-header);
+    font-size: 1.625rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.2;
+    margin-bottom: 0.2rem;
+}
+
+.statement-page-subtitle {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+}
+
+/* Back button override for statement page */
+.statement-back-btn {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — SEARCH BAR
+   ========================================================================== */
+
+/* Centered wrapper */
+.statement-search-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2.5rem;
+}
+
+.statement-search-bar {
+    width: 100%;
+    max-width: 780px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem 1.75rem;
+    box-shadow: var(--shadow-md);
+    transition: background-color var(--transition-normal), border-color var(--transition-normal);
+}
+
+/* Row: input + search button */
+.statement-search-input-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+/* Input wrapper with search icon */
+.statement-search-input-wrap {
+    position: relative;
+    flex: 1;
+}
+
+.statement-search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+/* Large search input */
+.statement-search-input {
+    width: 100%;
+    height: 48px;
+    padding: 0 1rem 0 2.75rem;
+    font-family: var(--font-primary);
+    font-size: 0.9375rem;
+    background-color: var(--bg-page);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast),
+                background-color var(--transition-fast);
+}
+
+.statement-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.statement-search-input:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.15);
+    background-color: var(--bg-surface);
+}
+
+[data-theme="dark"] .statement-search-input:focus {
+    box-shadow: 0 0 0 3px rgba(255, 122, 60, 0.15);
+}
+
+/* Error shake animation on empty query submit */
+.statement-input-error {
+    border-color: var(--color-danger) !important;
+    animation: statementInputShake 0.4s ease;
+}
+
+/* Search button */
+.statement-search-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 48px;
+    padding: 0 1.4rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    font-family: var(--font-primary);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+    transition: background-color var(--transition-fast),
+                transform var(--transition-fast),
+                box-shadow var(--transition-fast),
+                opacity var(--transition-fast);
+}
+
+.statement-search-btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.statement-search-btn:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Spinning icon for loading state */
+.statement-spin-icon {
+    animation: statementSpin 0.8s linear infinite;
+}
+
+/* Hint text below search bar */
+.statement-search-hint {
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — RESULTS AREA
+   ========================================================================== */
+
+.statement-results-area {
+    animation: fadeIn var(--transition-fast);
+}
+
+.statement-results-header {
+    margin-bottom: 1rem;
+}
+
+.statement-results-count {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.statement-results-count strong {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+/* Cards list container */
+.statement-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — RESULT CARD
+   Desktop: 3-column grid (Nội dung | Tình trạng | Hành động)
+   Mobile:  stack vertical
+   ========================================================================== */
+
+.statement-result-card {
+    display: grid;
+    grid-template-columns: 2fr 160px 180px;
+    gap: 0;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    animation: statementFadeSlideUp 0.35s both;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast),
+                background-color var(--transition-fast);
+}
+
+.statement-result-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+    background-color: var(--bg-surface-hover);
+}
+
+/* Individual column cell */
+.statement-card-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.1rem 1.25rem;
+    gap: 0.35rem;
+    border-right: 1px solid var(--border-color);
+    min-width: 0;
+}
+
+.statement-card-col:last-child {
+    border-right: none;
+}
+
+/* Column label (small descriptor above value) */
+.statement-col-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+/* Column value */
+.statement-col-value {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Nội dung text: wrap if very long */
+.statement-content-text {
+    font-size: 0.875rem;
+    font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    color: var(--text-primary);
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — BADGES
+   ========================================================================== */
+
+.statement-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.3rem 0.7rem;
+    border-radius: 9999px;
+    width: fit-content;
+    letter-spacing: 0.01em;
+    transition: filter var(--transition-fast);
+}
+
+/* Đã xử lý — xanh lá */
+.badge-success {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+[data-theme="dark"] .badge-success {
+    background-color: #052e16;
+    color: #4ade80;
+}
+
+/* Chưa xử lý — cam / vàng */
+.badge-warning {
+    background-color: #fff7ed;
+    color: #c2410c;
+}
+
+[data-theme="dark"] .badge-warning {
+    background-color: #431407;
+    color: #fb923c;
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — ACTION COLUMN
+   ========================================================================== */
+
+/* Action date (Đã xử lý) */
+.statement-action-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.statement-action-date svg {
+    stroke: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.statement-action-date--empty {
+    color: var(--text-muted);
+}
+
+/* "Xử lý ngay" button */
+.statement-process-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    width: fit-content;
+    transition: background-color var(--transition-fast),
+                transform var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.statement-process-btn:hover {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+    color: #ffffff;
+}
+
+.statement-process-btn svg {
+    stroke: #ffffff;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — EMPTY STATE
+   ========================================================================== */
+
+.statement-empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    animation: statementFadeSlideUp var(--transition-normal) both;
+}
+
+.statement-empty-initial {
+    padding: 2rem 1.5rem 3.5rem;
+}
+
+.statement-empty-visual {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+/* SVG illustration for initial state */
+.statement-empty-illustration {
+    width: 120px;
+    height: 100px;
+    opacity: 0.75;
+}
+
+/* Icon for other states */
+.statement-empty-icon {
+    width: 56px;
+    height: 56px;
+    color: var(--text-muted);
+    stroke: currentColor;
+}
+
+.statement-error-icon {
+    color: var(--color-danger);
+}
+
+.statement-empty-title {
+    font-family: var(--font-header);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: 0.5rem;
+}
+
+.statement-empty-title--error {
+    color: var(--color-danger);
+}
+
+.statement-empty-subtitle {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — LOADING SKELETON
+   ========================================================================== */
+
+.statement-loading-state {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.statement-card-skeleton {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — ANIMATIONS
+   ========================================================================== */
+
+@keyframes statementFadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes statementSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+@keyframes statementInputShake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    60%       { transform: translateX(6px); }
+    80%       { transform: translateX(-3px); }
+}
+
+/* ==========================================================================
+   STATEMENT SEARCH — RESPONSIVE
+   ========================================================================== */
+
+/* Tablet */
+@media (max-width: 900px) {
+    .statement-result-card {
+        grid-template-columns: 2fr 130px 160px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .statement-page-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .statement-back-btn {
+        margin-top: 0;
+        align-self: flex-start;
+    }
+
+    .statement-search-bar {
+        padding: 1.25rem 1rem;
+    }
+
+    .statement-search-input-row {
+        flex-direction: column;
+    }
+
+    .statement-search-input {
+        height: 44px;
+    }
+
+    .statement-search-btn {
+        height: 44px;
+        justify-content: center;
+        width: 100%;
+    }
+
+    /* Stack columns vertically on mobile */
+    .statement-result-card {
+        grid-template-columns: 1fr;
+    }
+
+    .statement-card-col {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.875rem 1rem;
+    }
+
+    .statement-card-col:last-child {
+        border-bottom: none;
+    }
+
+    .statement-content-text {
+        white-space: normal;
+        word-break: break-all;
+    }
+
+    /* Button row in category header */
+    .category-header-top-row {
+        flex-wrap: wrap;
+    }
+}

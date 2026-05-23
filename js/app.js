@@ -7,6 +7,7 @@ import { initTheme, toggleTheme } from './theme.js';
 import { parseMarkdown } from './markdown.js';
 import { fetchFAQData, clearCache } from './api.js';
 import { initRouter, navigate, getLink } from './router.js';
+import { renderStatementSearchPage } from './statement-search.js';
 
 // Global Application State
 const state = {
@@ -47,6 +48,17 @@ async function handleRouteTransition(routeInfo) {
     state.isLoading = true;
     state.error = null;
     renderLoadingState(routeInfo.name);
+
+    // Trang Tra cứu sao kê không cần FAQ data → render trực tiếp, không fetch
+    if (routeInfo.name === 'statement-search') {
+        state.isLoading = false;
+        renderStatementSearchPage(appContainer);
+        updateBreadcrumbs([
+            { name: 'Xu GHN', path: '/category/xu-ghn' },
+            { name: 'Tra cứu sao kê', path: '/statement-search' }
+        ]);
+        return;
+    }
 
     try {
         // Load data (loads from cache or fetches API)
@@ -374,14 +386,28 @@ function renderTopicsList(topicsList) {
         `;
     }
 
+    // Chỉ hiển thị button "Tra cứu sao kê" khi đang ở category Xu GHN (slug: xu-ghn)
+    const isXuGHN = category.slug === 'xu-ghn';
+    const statementBtnHtml = isXuGHN ? `
+        <button id="btn-statement-search" class="btn-primary btn-statement-search">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Tra cứu sao kê
+        </button>` : '';
+
     appContainer.innerHTML = `
         <div class="category-header-section">
-            <button id="btn-home" class="btn-back">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                Quay lại
-            </button>
+            <div class="category-header-top-row">
+                <button id="btn-home" class="btn-back">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Quay lại
+                </button>
+                ${statementBtnHtml}
+            </div>
             <div class="category-info">
                 <div class="category-title-badge"><i data-lucide="${(category.icon || 'help-circle').trim().toLowerCase()}"></i></div>
                 <div class="category-text-info">
@@ -406,6 +432,11 @@ function renderTopicsList(topicsList) {
     // Hook Back Button
     document.getElementById('btn-home')?.addEventListener('click', () => {
         navigate('/');
+    });
+
+    // Hook Tra cứu sao kê button (chỉ xuất hiện ở category xu-ghn)
+    document.getElementById('btn-statement-search')?.addEventListener('click', () => {
+        navigate('/statement-search');
     });
 
     // Hook search clear button if visible
