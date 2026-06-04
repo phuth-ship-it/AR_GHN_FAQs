@@ -3,18 +3,55 @@
  * A secure, feature-complete Markdown compiler with built-in XSS sanitization.
  *
  * Supported features:
- *  - Headings H1–H6  (trims leading whitespace for Google Sheets compatibility)
+ *  - Headings H1–H6 with collapsible (accordion) mode  (## [!COLLAPSE] Title)
  *  - Fenced code blocks  ```lang ... ```
  *  - GitHub-style callout blockquotes  > [!NOTE|TIP|IMPORTANT|WARNING|CAUTION]
+ *    with Vietnamese labels
+ *  - Step-by-step wizard  (::steps ... ::endsteps)
  *  - Nested unordered lists  (-, *, +)
  *  - Nested ordered lists    (1. 2. …)
- *  - Tables                  (| col | col |)
+ *  - Tables                  (| col | col |) with long-table handling
  *  - Horizontal rules        (---, ***, ___)
- *  - Images                  ![alt](url)
+ *  - Images                  ![alt](url) — clickable lightbox
+ *  - Video embed             @[video](url)
+ *  - Download link           @[download](url "Tên file")
+ *  - Slide carousel          @[slide](url1 | url2 | url3)
  *  - Links                   [text](url)
  *  - Inline bold, italic, code
  *  - XSS sanitization on all URLs
  */
+
+// ---------------------------------------------------------------------------
+// CALLOUT LABEL MAP (tiếng Việt)
+// ---------------------------------------------------------------------------
+const CALLOUT_LABEL_VI = {
+    NOTE:      '📝 Ghi chú',
+    TIP:       '💡 Mẹo hay',
+    IMPORTANT: '⚠️ Quan trọng',
+    WARNING:   '🚨 Lưu ý',
+    CAUTION:   '🔴 Cảnh báo',
+};
+
+const TAG_NORMALIZATION_MAP = {
+    // English
+    'NOTE': 'NOTE',
+    'TIP': 'TIP',
+    'IMPORTANT': 'IMPORTANT',
+    'WARNING': 'WARNING',
+    'CAUTION': 'CAUTION',
+    
+    // Vietnamese
+    'GHI CHÚ': 'NOTE',
+    'GHICHU': 'NOTE',
+    'MẸO': 'TIP',
+    'MẸO HAY': 'TIP',
+    'GỢI Ý': 'TIP',
+    'QUAN TRỌNG': 'IMPORTANT',
+    'LƯU Ý': 'WARNING',
+    'LUU Y': 'WARNING',
+    'CẢNH BÁO': 'CAUTION',
+    'CANH BAO': 'CAUTION'
+};
 
 // ---------------------------------------------------------------------------
 // PUBLIC API
@@ -29,7 +66,6 @@ export function parseMarkdown(md) {
     if (!md) return '';
 
     // ── Step 1: HTML-escape the raw text to prevent XSS injection ──────────
-    //    Also normalises Windows/Mac line endings (\r\n, \r) to standard \n.
     let escaped = md
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n')
@@ -39,9 +75,7 @@ export function parseMarkdown(md) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 
-    // ── Step 2: Extract fenced code blocks before any other processing ──────
-    //    Stores them in an array and replaces with safe placeholders so that
-    //    inner content is never touched by subsequent passes.
+    // ── Step 2: Extract fenced code blocks ──────────────────────────────────
     const codeBlocks = [];
     escaped = escaped.replace(/```(\w*)\n([\s\S]*?)\n```/g, (match, lang, code) => {
         const id = `__CODE_BLOCK_${codeBlocks.length}__`;
@@ -51,18 +85,39 @@ export function parseMarkdown(md) {
         return id;
     });
 
+    // ── Step 2b: Extract ::steps ... ::endsteps blocks ──────────────────────
+    const stepBlocks = [];
+    escaped = escaped.replace(/::steps\s*\n([\s\S]*?)\n\s*::endsteps/g, (match, content) => {
+        const id = `__STEP_BLOCK_${stepBlocks.length}__`;
+        stepBlocks.push(renderStepWizard(content));
+        return id;
+    });
+
+    // ── Step 2c: Extract @[slide](...) ──────────────────────────────────────
+    const slideBlocks = [];
+    escaped = escaped.replace(/@\[slide\]\(([^)]+)\)/g, (match, urlList) => {
+        const id = `__SLIDE_BLOCK_${slideBlocks.length}__`;
+        slideBlocks.push(renderSlideCarousel(urlList));
+        return id;
+    });
+
     // ── Step 3: Line-by-line block parsing ──────────────────────────────────
     const lines = escaped.split('\n');
     const htmlBlocks = [];
 
-    // Accumulated lines for the current block type
     let currentBlock = [];
-    // Current block type: 'ul' | 'ol' | 'table' | 'blockquote' | null
     let inList = null;
 
-    /**
-     * Flush whatever is in currentBlock into htmlBlocks, then reset state.
-     */
+    // Track active collapsible headings
+    const openCollapses = [];
+
+    const closeCollapsesAboveOrEqual = (level) => {
+        while (openCollapses.length > 0 && openCollapses[openCollapses.length - 1] >= level) {
+            htmlBlocks.push('  </div>\n</details>');
+            openCollapses.pop();
+        }
+    };
+
     const closeCurrentBlock = () => {
         if (inList === 'ul') {
             htmlBlocks.push(renderNestedList(currentBlock, 'ul'));
@@ -93,54 +148,97 @@ export function parseMarkdown(md) {
         const line  = lines[i];
         const trimmed = line.trim();
 
-        // ── Empty line → flush current block ────────────────────────────────
         if (trimmed === '') {
             closeCurrentBlock();
             continue;
         }
 
-        // ── Code block placeholder → flush, emit verbatim ───────────────────
+        // Code block placeholder
         if (trimmed.startsWith('__CODE_BLOCK_') && trimmed.endsWith('__')) {
             closeCurrentBlock();
             htmlBlocks.push(trimmed);
             continue;
         }
 
-        // ── Headings (H1–H6) ────────────────────────────────────────────────
-        //    Match on the *trimmed* line so leading spaces (from Google Sheets)
-        //    do not prevent detection.
+        // Step block placeholder
+        if (trimmed.startsWith('__STEP_BLOCK_') && trimmed.endsWith('__')) {
+            closeCurrentBlock();
+            htmlBlocks.push(trimmed);
+            continue;
+        }
+
+        // Slide block placeholder
+        if (trimmed.startsWith('__SLIDE_BLOCK_') && trimmed.endsWith('__')) {
+            closeCurrentBlock();
+            htmlBlocks.push(trimmed);
+            continue;
+        }
+
+        // ── @[video](url) embed ─────────────────────────────────────────────
+        const videoMatch = trimmed.match(/^@\[video\]\(([^)]+)\)$/);
+        if (videoMatch) {
+            closeCurrentBlock();
+            htmlBlocks.push(renderVideoEmbed(videoMatch[1]));
+            continue;
+        }
+
+        // ── @[download](url "Label") ────────────────────────────────────────
+        const downloadMatch = trimmed.match(/^@\[download\]\(([^\s)]+)(?:\s+"([^"]*)")?\)$/);
+        if (downloadMatch) {
+            closeCurrentBlock();
+            const rawUrl = downloadMatch[1];
+            const label  = downloadMatch[2] || 'Tải xuống';
+            htmlBlocks.push(renderDownloadLink(rawUrl, label));
+            continue;
+        }
+
+        // ── Headings — support [!COLLAPSE] flag ────────────────────────────
         const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
         if (headingMatch) {
             closeCurrentBlock();
             const level   = headingMatch[1].length;
             const content = headingMatch[2];
-            htmlBlocks.push(`<h${level}>${content}</h${level}>`);
+            
+            // Close any open collapses of level >= current level
+            closeCollapsesAboveOrEqual(level);
+
+            // Check for collapse flag: ## [!COLLAPSE] My Title
+            const collapseMatch = content.match(/^\[!COLLAPSE\]\s+(.+)$/i);
+            if (collapseMatch) {
+                const title = collapseMatch[1];
+                const safeTitle = applyInlineMarkdown(title);
+                htmlBlocks.push(`<details class="md-collapse h${level}">
+  <summary class="md-collapse-summary">
+    <span class="md-collapse-icon">▶</span>
+    <span class="md-collapse-title">${safeTitle}</span>
+  </summary>
+  <div class="md-collapse-body">`);
+                openCollapses.push(level);
+            } else {
+                htmlBlocks.push(`<h${level}>${content}</h${level}>`);
+            }
             continue;
         }
 
-        // ── Horizontal rule ──────────────────────────────────────────────────
+        // ── Horizontal rule ─────────────────────────────────────────────────
         if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
             closeCurrentBlock();
             htmlBlocks.push('<hr>');
             continue;
         }
 
-        // ── Blockquote (> …) ────────────────────────────────────────────────
-        //    The `>` must appear at the start of the *original* (non-trimmed)
-        //    line so we honour indentation of the quote content.
+        // ── Blockquote ──────────────────────────────────────────────────────
         const blockquoteMatch = line.match(/^(\s*)(?:>|&gt;)\s?(.*)$/);
         if (blockquoteMatch) {
             if (inList !== 'blockquote') {
                 closeCurrentBlock();
                 inList = 'blockquote';
             }
-            // Store the content that follows the `> ` prefix
             currentBlock.push(blockquoteMatch[2]);
             continue;
         }
 
-        // ── Unordered list  (-, *, +) ────────────────────────────────────────
-        //    Capture leading whitespace so we can build nested levels.
+        // ── Unordered list ──────────────────────────────────────────────────
         const ulMatch = line.match(/^(\s*)[-*+]\s+(.*)$/);
         if (ulMatch) {
             if (inList !== 'ul') {
@@ -151,7 +249,7 @@ export function parseMarkdown(md) {
             continue;
         }
 
-        // ── Ordered list  (1. 2. …) ──────────────────────────────────────────
+        // ── Ordered list ────────────────────────────────────────────────────
         const olMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
         if (olMatch) {
             if (inList !== 'ol') {
@@ -162,7 +260,7 @@ export function parseMarkdown(md) {
             continue;
         }
 
-        // ── Table row  (| … |) ───────────────────────────────────────────────
+        // ── Table row ────────────────────────────────────────────────────────
         if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
             if (inList !== 'table') {
                 closeCurrentBlock();
@@ -173,25 +271,37 @@ export function parseMarkdown(md) {
         }
 
         // ── Paragraph accumulator ────────────────────────────────────────────
-        //    A non-list line while inside a list block closes the list first.
         if (inList) {
             closeCurrentBlock();
         }
         currentBlock.push(line);
     }
 
-    // Flush any remaining block
     closeCurrentBlock();
 
-    // ── Step 4: Re-assemble blocks ───────────────────────────────────────────
+    // Close any remaining open collapses
+    while (openCollapses.length > 0) {
+        htmlBlocks.push('  </div>\n</details>');
+        openCollapses.pop();
+    }
+
+    // ── Step 4: Re-assemble ──────────────────────────────────────────────────
     let finalHtml = htmlBlocks.join('\n');
 
-    // Restore fenced code blocks
+    // Restore code blocks
     codeBlocks.forEach((codeHtml, idx) => {
         finalHtml = finalHtml.replace(`__CODE_BLOCK_${idx}__`, codeHtml);
     });
+    // Restore step blocks
+    stepBlocks.forEach((stepHtml, idx) => {
+        finalHtml = finalHtml.replace(`__STEP_BLOCK_${idx}__`, stepHtml);
+    });
+    // Restore slide blocks
+    slideBlocks.forEach((slideHtml, idx) => {
+        finalHtml = finalHtml.replace(`__SLIDE_BLOCK_${idx}__`, slideHtml);
+    });
 
-    // ── Step 5: Inline transformations ───────────────────────────────────────
+    // ── Step 5: Inline transformations ─────────────────────────────────────
     finalHtml = applyInlineMarkdown(finalHtml);
 
     return finalHtml;
@@ -201,20 +311,7 @@ export function parseMarkdown(md) {
 // INLINE MARKDOWN
 // ---------------------------------------------------------------------------
 
-/**
- * Applies inline Markdown patterns to an HTML string.
- * Order matters:
- *   1. Inline code  (`…`)  — must come first so * inside code is not italicised
- *   2. Bold         (**…**)
- *   3. Italic       (*…*)
- *   4. Images       (![alt](url))  — must come before links
- *   5. Links        ([text](url))
- *
- * @param {string} html
- * @returns {string}
- */
 function applyInlineMarkdown(html) {
-    // Temporarily stash inline-code spans so their contents are not touched
     const inlineCodes = [];
     html = html.replace(/`([^`]+)`/g, (_, code) => {
         const id = `__INLINE_CODE_${inlineCodes.length}__`;
@@ -222,17 +319,23 @@ function applyInlineMarkdown(html) {
         return id;
     });
 
-    // Bold: **text**
+    // Bold
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-    // Italic: *text*  (single asterisk, not preceded/followed by another *)
+    // Italic
     html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
 
-    // Images: ![alt](url)  — processed BEFORE links to avoid conflict
+    // @[video] inline (inside paragraphs — secondary pass)
+    html = html.replace(/@\[video\]\(([^)]+)\)/g, (_, url) => renderVideoEmbed(url));
+
+    // @[download] inline
+    html = html.replace(/@\[download\]\(([^\s)]+)(?:\s+"([^"]*)")?\)/g, (_, url, label) =>
+        renderDownloadLink(url, label || 'Tải xuống')
+    );
+
+    // Images — clickable lightbox: ![alt](url)
     html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
         const safeUrl = sanitizeUrl(url);
-        // alt text is already HTML-escaped from Step 1; no further escaping needed
-        return `<img src="${safeUrl}" alt="${alt}" loading="lazy" class="markdown-image">`;
+        return `<img src="${safeUrl}" alt="${alt}" loading="lazy" class="markdown-image md-lightbox-trigger" data-src="${safeUrl}">`;
     });
 
     // Links: [text](url)
@@ -241,7 +344,7 @@ function applyInlineMarkdown(html) {
         return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
     });
 
-    // Restore inline code spans
+    // Restore inline code
     inlineCodes.forEach((codeHtml, idx) => {
         html = html.replace(`__INLINE_CODE_${idx}__`, codeHtml);
     });
@@ -250,26 +353,178 @@ function applyInlineMarkdown(html) {
 }
 
 // ---------------------------------------------------------------------------
+// COLLAPSIBLE HEADING  (uses native <details>/<summary>)
+// ---------------------------------------------------------------------------
+
+function getDirectDownloadUrl(url) {
+    const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/([A-Za-z0-9_-]+)|open\?id=([A-Za-z0-9_-]+))/i);
+    if (driveMatch) {
+        const fileId = driveMatch[1] || driveMatch[2];
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+    return url;
+}
+
+// ---------------------------------------------------------------------------
+// VIDEO EMBED
+// ---------------------------------------------------------------------------
+
+function renderVideoEmbed(rawUrl) {
+    const url = sanitizeUrl(rawUrl.trim());
+
+    // YouTube formats (support watch, embed, shorts, and youtu.be)
+    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+    if (ytMatch) {
+        const vid = ytMatch[1];
+        return `<div class="md-video-wrapper">
+  <iframe class="md-video-frame"
+    src="https://www.youtube.com/embed/${vid}"
+    title="Video YouTube"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowfullscreen>
+  </iframe>
+</div>`;
+    }
+
+    // Google Drive formats (support file/d and open?id)
+    const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/([A-Za-z0-9_-]+)|open\?id=([A-Za-z0-9_-]+))/i);
+    if (driveMatch) {
+        const fileId = driveMatch[1] || driveMatch[2];
+        return `<div class="md-video-wrapper">
+  <iframe class="md-video-frame"
+    src="https://drive.google.com/file/d/${fileId}/preview"
+    title="Video hướng dẫn"
+    frameborder="0"
+    allowfullscreen>
+  </iframe>
+</div>`;
+    }
+
+    // Generic video file
+    if (/\.(mp4|webm|ogg)(\?|$)/i.test(url)) {
+        return `<div class="md-video-wrapper">
+  <video class="md-video-native" controls>
+    <source src="${url}" type="video/mp4">
+    Trình duyệt của bạn không hỗ trợ phát video.
+  </video>
+</div>`;
+    }
+
+    // Fallback: link
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="md-video-fallback">🎬 Xem video hướng dẫn</a>`;
+}
+
+// ---------------------------------------------------------------------------
+// DOWNLOAD LINK
+// ---------------------------------------------------------------------------
+
+function renderDownloadLink(rawUrl, label) {
+    const url = sanitizeUrl(rawUrl.trim());
+    const directUrl = getDirectDownloadUrl(url);
+    const safeLabel = label
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    return `<a href="${directUrl}" class="md-download-link" download target="_blank" rel="noopener noreferrer">
+  <span class="md-download-icon">⬇</span>
+  <span>${safeLabel}</span>
+</a>`;
+}
+
+// ---------------------------------------------------------------------------
+// STEP WIZARD
+// ---------------------------------------------------------------------------
+
+function renderStepWizard(rawContent) {
+    // Each step starts with a line: ## Step Title  (or ### Step Title)
+    // Alternative: lines starting with "Step N:" or just sequential paragraphs.
+    // We use the pattern: lines starting with ## as step titles.
+    const lines = rawContent.split('\n');
+    const steps = [];
+    let current = null;
+
+    for (const line of lines) {
+        const stepTitleMatch = line.trim().match(/^#{1,3}\s+(.+)$/);
+        if (stepTitleMatch) {
+            if (current) steps.push(current);
+            current = { title: stepTitleMatch[1], body: [] };
+        } else if (current) {
+            current.body.push(line);
+        }
+    }
+    if (current) steps.push(current);
+
+    if (steps.length === 0) {
+        // Treat each paragraph as a step
+        const paras = rawContent.split('\n\n').filter(p => p.trim());
+        paras.forEach((p, i) => {
+            steps.push({ title: `Bước ${i + 1}`, body: [p] });
+        });
+    }
+
+    const stepsHtml = steps.map((step, idx) => {
+        const bodyHtml = parseMarkdown(step.body.join('\n'));
+        return `<div class="md-step" data-step="${idx}" ${idx === 0 ? 'data-active="true"' : ''}>
+  <div class="md-step-body">${bodyHtml}</div>
+</div>`;
+    }).join('\n');
+
+    const navButtons = `
+<div class="md-steps-nav">
+  <button class="md-steps-btn md-steps-prev" onclick="mdStepPrev(this)" disabled>← Bước trước</button>
+  <span class="md-steps-indicator">Bước <span class="md-steps-current">1</span> / ${steps.length}</span>
+  <button class="md-steps-btn md-steps-next" onclick="mdStepNext(this)">Bước sau →</button>
+</div>`;
+
+    const progressDots = steps.map((step, idx) => `
+  <button class="md-step-dot ${idx === 0 ? 'active' : ''}" data-goto="${idx}" title="${step.title.replace(/"/g, '&quot;')}">
+    <span class="md-step-dot-num">${idx + 1}</span>
+    <span class="md-step-dot-label">${step.title}</span>
+  </button>`).join('');
+
+    return `<div class="md-steps-wizard" data-total="${steps.length}" data-current="0">
+<div class="md-steps-progress">${progressDots}</div>
+${stepsHtml}
+${navButtons}
+</div>`;
+}
+
+// ---------------------------------------------------------------------------
+// SLIDE CAROUSEL
+// ---------------------------------------------------------------------------
+
+function renderSlideCarousel(urlList) {
+    const urls = urlList.split(/[\r\n,|]+/).map(u => sanitizeUrl(u.trim())).filter(Boolean);
+    if (urls.length === 0) return '';
+
+    const slides = urls.map((url, idx) => `
+  <div class="md-slide" data-index="${idx}" ${idx === 0 ? 'data-active="true"' : ''}>
+    <img src="${url}" alt="Slide ${idx + 1}" loading="lazy" class="md-slide-img md-lightbox-trigger" data-src="${url}">
+  </div>`).join('');
+
+    const dots = urls.map((_, idx) =>
+        `<button class="md-slide-dot ${idx === 0 ? 'active' : ''}" data-goto="${idx}" title="Slide ${idx + 1}"></button>`
+    ).join('');
+
+    return `<div class="md-slide-carousel" data-total="${urls.length}" data-current="0">
+  <div class="md-slides-track">${slides}</div>
+  <div class="md-slide-controls">
+    <button class="md-slide-btn md-slide-prev" onclick="mdSlidePrev(this)" disabled>‹</button>
+    <div class="md-slide-dots">${dots}</div>
+    <button class="md-slide-btn md-slide-next" onclick="mdSlideNext(this)">›</button>
+  </div>
+  <div class="md-slide-counter"><span class="md-slide-cur">1</span> / ${urls.length}</div>
+</div>`;
+}
+
+// ---------------------------------------------------------------------------
 // NESTED LIST RENDERER
 // ---------------------------------------------------------------------------
 
-/**
- * Converts an array of  { indent: number, text: string }  items into
- * nested  <ul>  or  <ol>  HTML.  Supports arbitrary depth.
- *
- * Algorithm:
- *  - Walk through items in order, keeping a stack of open list levels.
- *  - When indent increases → open a new nested list inside the last <li>.
- *  - When indent decreases → close open levels until we match the target depth.
- *
- * @param {Array<{indent: number, text: string}>} items
- * @param {'ul'|'ol'} tag
- * @returns {string} HTML
- */
 function renderNestedList(items, tag) {
     if (!items || items.length === 0) return '';
 
-    // Normalise indentation to 0-based levels using the minimum indent found
     const minIndent = Math.min(...items.map(it => it.indent));
     const normalised = items.map(it => ({
         level: it.indent - minIndent,
@@ -277,10 +532,7 @@ function renderNestedList(items, tag) {
     }));
 
     let html = '';
-    // Stack stores the current indent level of each open list
-    const stack = []; // stack of indent levels
-
-    // Open the root list
+    const stack = [];
     html += `<${tag}>\n`;
     stack.push(0);
 
@@ -289,18 +541,13 @@ function renderNestedList(items, tag) {
         const currentLevel = stack[stack.length - 1];
 
         if (level > currentLevel) {
-            // Deeper indent → open a new nested list (inside the previous <li>)
-            // Close the previous <li> tag isn't emitted yet; we nest inside it.
-            // Remove the last ">" so we can append a nested list before closing </li>
             html = html.trimEnd();
-            // Strip the last </li> if present (it was prematurely closed)
             if (html.endsWith('</li>')) {
                 html = html.slice(0, -5);
             }
             html += `\n<${tag}>\n`;
             stack.push(level);
         } else if (level < currentLevel) {
-            // Shallower indent → close open lists until we match
             while (stack.length > 1 && stack[stack.length - 1] > level) {
                 html += `</${tag}>\n</li>\n`;
                 stack.pop();
@@ -310,7 +557,6 @@ function renderNestedList(items, tag) {
         html += `  <li>${applyInlineMarkdown(text)}</li>\n`;
     }
 
-    // Close all remaining open lists
     while (stack.length > 0) {
         html += `</${tag}>\n`;
         stack.pop();
@@ -323,51 +569,34 @@ function renderNestedList(items, tag) {
 // BLOCKQUOTE / CALLOUT RENDERER
 // ---------------------------------------------------------------------------
 
-/**
- * Renders accumulated blockquote lines.
- * Detects GitHub-style alert headers: [!NOTE], [!TIP], [!IMPORTANT],
- * [!WARNING], [!CAUTION] and maps them to CSS callout classes.
- *
- * Google Sheets stores multi-line cell values with literal \n characters.
- * Each line is already split before arriving here (one entry per array slot),
- * so joining with \n and then detecting the first token works reliably.
- *
- * @param {string[]} lines - Lines collected after stripping the leading `> `
- * @returns {string} Blockquote HTML
- */
 function renderBlockquote(lines) {
     if (lines.length === 0) return '';
 
-    // Join all lines so we can inspect the full content as one string
     let content = lines.join('\n').trim();
     let alertClass = '';
     let alertLabel = '';
 
-    // Detect [!TYPE] as the very first token (possibly on its own line)
-    const alertMatch = content.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*([\s\S]*)$/i);
+    const alertMatch = content.match(/^\[!([^\]]+)\][ \t]*([\s\S]*)$/i);
     if (alertMatch) {
-        const type = alertMatch[1].toUpperCase();
-
-        const classMap = {
-            NOTE:      'callout-note',
-            TIP:       'callout-note',
-            IMPORTANT: 'callout-important',
-            WARNING:   'callout-warning',
-            CAUTION:   'callout-danger',
-        };
-        alertClass = classMap[type] || '';
-        alertLabel = type.charAt(0) + type.slice(1).toLowerCase(); // e.g. "Important"
-
-        // The rest of the content follows after the [!TYPE] line
-        content = alertMatch[2].trim();
+        const rawTag = alertMatch[1].trim().toUpperCase();
+        const type = TAG_NORMALIZATION_MAP[rawTag];
+        if (type) {
+            const classMap = {
+                NOTE:      'callout-note',
+                TIP:       'callout-note',
+                IMPORTANT: 'callout-important',
+                WARNING:   'callout-warning',
+                CAUTION:   'callout-danger',
+            };
+            alertClass = classMap[type] || '';
+            alertLabel = CALLOUT_LABEL_VI[type] || type;
+            content = alertMatch[2].trim();
+        }
     }
 
-    // Apply inline Markdown to the inner content
     const formattedContent = applyInlineMarkdown(content.replace(/\n/g, '<br>'));
-
     const classAttr = alertClass ? ` class="${alertClass}"` : '';
 
-    // If it is a callout, prepend a labelled header badge
     if (alertClass) {
         return `<blockquote${classAttr}><p class="callout-label">${alertLabel}</p>${formattedContent}</blockquote>`;
     }
@@ -376,14 +605,9 @@ function renderBlockquote(lines) {
 }
 
 // ---------------------------------------------------------------------------
-// TABLE RENDERER
+// TABLE RENDERER (with long-table freeze support)
 // ---------------------------------------------------------------------------
 
-/**
- * Renders collected Markdown table rows as an HTML table.
- * @param {string[]} rows - Raw table row strings  (| cell | cell |)
- * @returns {string} Table HTML
- */
 function renderTable(rows) {
     if (rows.length === 0) return '';
 
@@ -392,7 +616,6 @@ function renderTable(rows) {
         return cells.map(cell => cell.trim());
     });
 
-    // Detect alignment separator row (row index 1 with  :---  patterns)
     let hasSeparator = false;
     let alignments   = [];
 
@@ -412,7 +635,20 @@ function renderTable(rows) {
     const headerRow = parsedRows[0];
     const bodyRows  = hasSeparator ? parsedRows.slice(2) : parsedRows.slice(1);
 
-    let html = '<div class="table-container"><table>\n';
+    const isWideTable = headerRow.length > 5;
+    const isLongTable = bodyRows.length > 15;
+
+    const tableClasses = [];
+    if (isLongTable) tableClasses.push('md-table-long');
+    if (isWideTable) tableClasses.push('md-table-wide');
+
+    const tableClass = tableClasses.length > 0 ? ` class="${tableClasses.join(' ')}"` : '';
+
+    const containerClasses = ['table-container'];
+    if (isLongTable) containerClasses.push('table-container-long');
+    if (isWideTable) containerClasses.push('table-container-wide');
+
+    let html = `<div class="${containerClasses.join(' ')}"><table${tableClass}>\n`;
 
     if (headerRow.length > 0) {
         html += '  <thead>\n    <tr>\n';
@@ -425,8 +661,9 @@ function renderTable(rows) {
 
     if (bodyRows.length > 0) {
         html += '  <tbody>\n';
-        bodyRows.forEach(row => {
-            html += '    <tr>\n';
+        bodyRows.forEach((row, rowIdx) => {
+            const rowClass = rowIdx % 2 === 0 ? '' : ' class="odd"';
+            html += `    <tr${rowClass}>\n`;
             row.forEach((cell, idx) => {
                 const align = alignments[idx] ? ` align="${alignments[idx]}"` : '';
                 html += `      <td${align}>${applyInlineMarkdown(cell)}</td>\n`;
@@ -444,11 +681,6 @@ function renderTable(rows) {
 // URL SANITIZER
 // ---------------------------------------------------------------------------
 
-/**
- * Blocks dangerous URL protocols (javascript:, data:, vbscript:).
- * @param {string} url - Raw URL string (may come from Markdown syntax)
- * @returns {string} Safe URL, or '#' if the protocol is disallowed
- */
 function sanitizeUrl(url) {
     const trimmed = url.trim().toLowerCase();
     if (
@@ -460,3 +692,174 @@ function sanitizeUrl(url) {
     }
     return url.trim();
 }
+
+// ---------------------------------------------------------------------------
+// GLOBAL INTERACTIVE HANDLERS (called by inline onclick)
+// Exported to window so inline HTML callbacks work.
+// ---------------------------------------------------------------------------
+
+/**
+ * Toggle collapse section open/closed.
+ */
+window.mdToggleCollapse = function(btn) {
+    const details = btn.closest('details.md-collapse');
+    if (!details) return;
+    // details handles open/close natively, just animate icon
+    const icon = btn.querySelector('.md-collapse-icon');
+    if (icon) {
+        icon.style.transform = details.open ? 'rotate(0deg)' : 'rotate(90deg)';
+    }
+};
+
+/**
+ * Step wizard: go to next step.
+ */
+window.mdStepNext = function(btn) {
+    const wizard = btn.closest('.md-steps-wizard');
+    if (!wizard) return;
+    const current = parseInt(wizard.dataset.current, 10);
+    const total   = parseInt(wizard.dataset.total, 10);
+    if (current < total - 1) mdStepGoTo(wizard, current + 1);
+};
+
+/**
+ * Step wizard: go to previous step.
+ */
+window.mdStepPrev = function(btn) {
+    const wizard = btn.closest('.md-steps-wizard');
+    if (!wizard) return;
+    const current = parseInt(wizard.dataset.current, 10);
+    if (current > 0) mdStepGoTo(wizard, current - 1);
+};
+
+function mdStepGoTo(wizard, idx) {
+    const total = parseInt(wizard.dataset.total, 10);
+    wizard.dataset.current = idx;
+
+    // Update steps visibility
+    wizard.querySelectorAll('.md-step').forEach((step, i) => {
+        step.dataset.active = (i === idx) ? 'true' : 'false';
+    });
+
+    // Update dots
+    wizard.querySelectorAll('.md-step-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === idx);
+        dot.classList.toggle('done', i < idx);
+    });
+
+    // Update nav buttons
+    const prev = wizard.querySelector('.md-steps-prev');
+    const next = wizard.querySelector('.md-steps-next');
+    if (prev) prev.disabled = idx === 0;
+    if (next) next.disabled = idx === total - 1;
+
+    // Update indicator
+    const cur = wizard.querySelector('.md-steps-current');
+    if (cur) cur.textContent = idx + 1;
+}
+
+// Dot click for steps
+document.addEventListener('click', (e) => {
+    const dot = e.target.closest('.md-step-dot[data-goto]');
+    if (dot) {
+        const wizard = dot.closest('.md-steps-wizard');
+        if (wizard) mdStepGoTo(wizard, parseInt(dot.dataset.goto, 10));
+    }
+});
+
+/**
+ * Slide carousel: next.
+ */
+window.mdSlideNext = function(btn) {
+    const carousel = btn.closest('.md-slide-carousel');
+    if (!carousel) return;
+    const current = parseInt(carousel.dataset.current, 10);
+    const total   = parseInt(carousel.dataset.total, 10);
+    if (current < total - 1) mdSlideGoTo(carousel, current + 1);
+};
+
+/**
+ * Slide carousel: prev.
+ */
+window.mdSlidePrev = function(btn) {
+    const carousel = btn.closest('.md-slide-carousel');
+    if (!carousel) return;
+    const current = parseInt(carousel.dataset.current, 10);
+    if (current > 0) mdSlideGoTo(carousel, current - 1);
+};
+
+function mdSlideGoTo(carousel, idx) {
+    const total = parseInt(carousel.dataset.total, 10);
+    carousel.dataset.current = idx;
+
+    carousel.querySelectorAll('.md-slide').forEach((slide, i) => {
+        slide.dataset.active = (i === idx) ? 'true' : 'false';
+    });
+    carousel.querySelectorAll('.md-slide-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === idx);
+    });
+
+    const prev = carousel.querySelector('.md-slide-prev');
+    const next = carousel.querySelector('.md-slide-next');
+    if (prev) prev.disabled = idx === 0;
+    if (next) next.disabled = idx === total - 1;
+
+    const cur = carousel.querySelector('.md-slide-cur');
+    if (cur) cur.textContent = idx + 1;
+}
+
+// Dot click for slides
+document.addEventListener('click', (e) => {
+    const dot = e.target.closest('.md-slide-dot[data-goto]');
+    if (dot) {
+        const carousel = dot.closest('.md-slide-carousel');
+        if (carousel) mdSlideGoTo(carousel, parseInt(dot.dataset.goto, 10));
+    }
+});
+
+// ---------------------------------------------------------------------------
+// LIGHTBOX (Image zoom)
+// ---------------------------------------------------------------------------
+
+(function setupLightbox() {
+    // Inject lightbox DOM once
+    let overlay = document.getElementById('md-lightbox-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'md-lightbox-overlay';
+        overlay.innerHTML = `
+          <button class="md-lightbox-close" title="Đóng" aria-label="Đóng ảnh">&times;</button>
+          <img class="md-lightbox-img" src="" alt="Phóng to ảnh">
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay || e.target.classList.contains('md-lightbox-close')) {
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    }
+
+    // Event delegation: listen for clicks on lightbox-trigger images
+    document.addEventListener('click', (e) => {
+        const img = e.target.closest('.md-lightbox-trigger');
+        if (img) {
+            const src = img.dataset.src || img.src;
+            const lightboxImg = overlay.querySelector('.md-lightbox-img');
+            if (lightboxImg) {
+                lightboxImg.src = src;
+                lightboxImg.alt = img.alt || 'Ảnh phóng to';
+            }
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    });
+})();

@@ -124,6 +124,9 @@ Trong cột **Content** của Google Sheet, bạn có thể viết văn bản th
 
 > [!WARNING]
 > Đây là khuyến cáo tránh làm sai quy định.
+
+> [!DANGER]
+> Đây là nội dung cảnh cáo.
 ```
 
 ---

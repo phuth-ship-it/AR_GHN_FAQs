@@ -50,6 +50,11 @@ export function parseCurrentRoute() {
         return { name: 'faq', params: { slug: faqMatch[1] } };
     }
 
+    // Statement Search Page: /statement-search
+    if (path === '/statement-search') {
+        return { name: 'statement-search', params: {} };
+    }
+
     // 404 Fallback
     return { name: 'notfound', params: { path } };
 }

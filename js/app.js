@@ -7,6 +7,7 @@ import { initTheme, toggleTheme } from './theme.js';
 import { parseMarkdown } from './markdown.js';
 import { fetchFAQData, clearCache } from './api.js';
 import { initRouter, navigate, getLink } from './router.js';
+import { renderStatementSearchPage } from './statement-search.js';
 
 // Global Application State
 const state = {
@@ -47,6 +48,17 @@ async function handleRouteTransition(routeInfo) {
     state.isLoading = true;
     state.error = null;
     renderLoadingState(routeInfo.name);
+
+    // Trang Tra cứu sao kê không cần FAQ data → render trực tiếp, không fetch
+    if (routeInfo.name === 'statement-search') {
+        state.isLoading = false;
+        renderStatementSearchPage(appContainer);
+        updateBreadcrumbs([
+            { name: 'Xu GHN', path: '/category/xu-ghn' },
+            { name: 'Tra cứu sao kê', path: '/statement-search' }
+        ]);
+        return;
+    }
 
     try {
         // Load data (loads from cache or fetches API)
@@ -140,10 +152,60 @@ function processSheetData(rows) {
         }
     });
 
+    // Sort topics by date (newest first) if an UpdatedAt / Date column exists
+    Array.from(categoriesMap.values()).forEach(cat => {
+        cat.topics.sort((a, b) => {
+            const dateA = parseTopicDate(a);
+            const dateB = parseTopicDate(b);
+            if (dateA && dateB) return dateB - dateA; // newest first
+            if (dateA) return -1;
+            if (dateB) return 1;
+            return 0; // keep original order if no dates
+        });
+    });
+
     return {
         categories: Array.from(categoriesMap.values()),
         faqs: faqs
     };
+}
+
+/**
+ * Helper to parse Vietnamese date strings (DD/MM/YYYY or DD-MM-YYYY)
+ * or standard JS date formats.
+ */
+function parseDateString(raw) {
+    if (!raw) return null;
+    if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
+
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        // Regex for DD/MM/YYYY or DD-MM-YYYY, optionally followed by HH:mm:ss
+        const match = trimmed.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+        if (match) {
+            const day = parseInt(match[1], 10);
+            const month = parseInt(match[2], 10) - 1; // 0-indexed
+            const year = parseInt(match[3], 10);
+            const hour = match[4] ? parseInt(match[4], 10) : 0;
+            const minute = match[5] ? parseInt(match[5], 10) : 0;
+            const second = match[6] ? parseInt(match[6], 10) : 0;
+            return new Date(year, month, day, hour, minute, second);
+        }
+    }
+
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Parses a date from a FAQ topic row.
+ * Looks for UpdatedAt, Date, or CreatedAt columns.
+ * Returns a Date object or null.
+ */
+function parseTopicDate(faq) {
+    const raw = faq.UpdatedAt || faq.Date || faq.CreatedAt || '';
+    if (!raw) return null;
+    return parseDateString(raw);
 }
 
 /**
@@ -374,14 +436,28 @@ function renderTopicsList(topicsList) {
         `;
     }
 
+    // Chỉ hiển thị button "Tra cứu sao kê" khi đang ở category Xu GHN (slug: xu-ghn)
+    const isXuGHN = category.slug === 'xu-ghn';
+    const statementBtnHtml = isXuGHN ? `
+        <button id="btn-statement-search" class="btn-primary btn-statement-search">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Tra cứu sao kê
+        </button>` : '';
+
     appContainer.innerHTML = `
         <div class="category-header-section">
-            <button id="btn-home" class="btn-back">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                Quay lại
-            </button>
+            <div class="category-header-top-row">
+                <button id="btn-home" class="btn-back">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Quay lại
+                </button>
+                ${statementBtnHtml}
+            </div>
             <div class="category-info">
                 <div class="category-title-badge"><i data-lucide="${(category.icon || 'help-circle').trim().toLowerCase()}"></i></div>
                 <div class="category-text-info">
@@ -406,6 +482,11 @@ function renderTopicsList(topicsList) {
     // Hook Back Button
     document.getElementById('btn-home')?.addEventListener('click', () => {
         navigate('/');
+    });
+
+    // Hook Tra cứu sao kê button (chỉ xuất hiện ở category xu-ghn)
+    document.getElementById('btn-statement-search')?.addEventListener('click', () => {
+        navigate('/statement-search');
     });
 
     // Hook search clear button if visible
@@ -535,6 +616,18 @@ function renderFAQDetail(faqSlug) {
     // Parse Markdown to Safe Sanitized HTML
     const htmlBodyContent = parseMarkdown(activeFaq.Content);
 
+    // Format date if available
+    const dateRaw = activeFaq.UpdatedAt || activeFaq.Date || activeFaq.CreatedAt || '';
+    let dateStr = '';
+    if (dateRaw) {
+        const d = parseDateString(dateRaw);
+        if (d) {
+            dateStr = d.toLocaleDateString('vi-VN', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+        }
+    }
+
     appContainer.innerHTML = `
         <div class="faq-detail-container">
             <div class="faq-header-actions">
@@ -557,6 +650,7 @@ function renderFAQDetail(faqSlug) {
             <article class="faq-article">
                 <div class="faq-article-category">${category.name}</div>
                 <h1 class="faq-article-title">${activeFaq.Topic}</h1>
+                ${dateStr ? `<div class="faq-article-date">🕐 Cập nhật: ${dateStr}</div>` : ''}
                 <div class="faq-body-content">
                     ${htmlBodyContent}
                 </div>
@@ -574,6 +668,9 @@ function renderFAQDetail(faqSlug) {
     });
 
     refreshIcons();
+
+    // Post-render: process collapsible headings within rendered content
+    processCollapsibleHeadings();
 }
 
 /**
@@ -583,4 +680,29 @@ function refreshIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
     }
+}
+
+/**
+ * Post-render processor: wraps [!COLLAPSE] heading sections into
+ * native <details>/<summary> elements.
+ *
+ * After parseMarkdown() runs, collapsible headings appear as:
+ *   <h2 data-collapse="true">Title</h2>
+ * (from the renderCollapsibleSection marker).
+ *
+ * This function is a no-op for the current implementation because
+ * markdown.js generates full <details> HTML directly.
+ * Kept as a hook for future enhancements.
+ */
+function processCollapsibleHeadings() {
+    // Currently markdown.js renders details/summary natively.
+    // This function handles any cleanup if needed.
+    const container = document.querySelector('.faq-body-content');
+    if (!container) return;
+    // Ensure details within faq-body-content have the correct class
+    container.querySelectorAll('details').forEach(d => {
+        if (!d.classList.contains('md-collapse')) {
+            d.classList.add('md-collapse');
+        }
+    });
 }
