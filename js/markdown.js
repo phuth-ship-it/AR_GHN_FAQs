@@ -191,7 +191,7 @@ export function parseMarkdown(md) {
         }
 
         // ── @[download](url "Label") ────────────────────────────────────────
-        const downloadMatch = trimmed.match(/^@\[download\]\(([^\s)]+)(?:\s+"([^"]*)")?\)$/);
+        const downloadMatch = trimmed.match(/^@\[download\]\(([^\s)]+)(?:\s+(?:&quot;|"|&#039;|')([\s\S]*?)(?:&quot;|"|&#039;|'))?\)$/);
         if (downloadMatch) {
             closeCurrentBlock();
             const rawUrl = downloadMatch[1];
@@ -340,7 +340,7 @@ function applyInlineMarkdown(html) {
     html = html.replace(/@\[video\]\(([^)]+)\)/g, (_, url) => renderVideoEmbed(url));
 
     // @[download] inline
-    html = html.replace(/@\[download\]\(([^\s)]+)(?:\s+"([^"]*)")?\)/g, (_, url, label) =>
+    html = html.replace(/@\[download\]\(([^\s)]+)(?:\s+(?:&quot;|"|&#039;|')([\s\S]*?)(?:&quot;|"|&#039;|'))?\)/g, (_, url, label) =>
         renderDownloadLink(url, label || 'Tải xuống')
     );
 
