@@ -153,5 +153,13 @@ const MOCK_FAQ_DATA = [
         Content: 'Để quản lý hiệu quả tài nguyên phòng họp và tránh việc xung đột lịch sử dụng giữa các phòng ban, toàn bộ nhân viên thực hiện đặt phòng họp theo các quy định dưới đây:\n\n### Hướng dẫn đặt phòng họp trên Google Calendar\n\n1. Mở ứng dụng **Google Calendar** bằng tài khoản email công ty.\n2. Tạo một sự kiện mới vào khung giờ bạn muốn họp.\n3. Tại cột bên phải, nhấp vào mục **Rooms** (Phòng họp).\n4. Chọn cơ sở văn phòng của bạn và nhấp chọn phòng họp còn trống tương ứng với số lượng người tham dự (VD: *Phòng họp Lớn - Tầng 3 (15 người)*).\n5. Điền tiêu đề cuộc họp (Ví dụ: `[IT] Họp giao ban tuần`), thêm người tham gia và nhấn **Save**.\n\n### Quy tắc sử dụng phòng họp\n\n* **Đúng giờ**: Giải phóng phòng họp đúng giờ đã đăng ký để các nhóm tiếp theo vào sử dụng.\n* **Hủy phòng**: Nếu cuộc họp bị hủy hoặc dời lịch, hãy cập nhật xóa phòng họp trên Calendar ngay lập tức để người khác có thể sử dụng.\n* **Vệ sinh chung**: Sau khi kết thúc họp, tắt máy chiếu/tivi, tắt điều hòa, lau bảng và xếp lại ghế ngăn nắp.',
         Icon: 'help-circle',
         Slug: 'dang-ky-phong-hop'
+    },
+    {
+        Category: 'Hướng dẫn',
+        Topic: 'Thử nghiệm Selector (Demo)',
+        Description: 'Kiểm tra tính năng chọn điều kiện hiển thị hợp đồng tương ứng.',
+        Content: 'Quy trình này hướng dẫn chọn các loại tài liệu hợp đồng phù hợp.\n\n@selector\n\nĐối tượng ký hợp đồng:\n- Cá Nhân\n- Doanh Nghiệp\n\nPhương thức thanh toán:\n- Credit\n- Cấn COD\n\n---\n\nCá Nhân|Credit:\n### Hợp đồng Cá Nhân thanh toán Credit\n@[download](https://drive.google.com/file/d/1A2B3C4D5E6F/view "Tải hợp đồng Cá Nhân - Credit")\n\nCá Nhân|Cấn COD:\n### Hợp đồng Cá Nhân cấn trừ COD\n@[download](https://drive.google.com/file/d/2A2B3C4D5E6F/view "Tải hợp đồng Cá Nhân - Cấn COD")\n\n> [!NOTE]\n> Áp dụng cho cá nhân có doanh số trên 10 triệu/tháng.\n\nDoanh Nghiệp|Credit:\n### Hợp đồng Doanh Nghiệp thanh toán Credit\n@[download](https://drive.google.com/file/d/3A2B3C4D5E6F/view "Tải hợp đồng Doanh Nghiệp - Credit")\n\n## [!COLLAPSE] Điều khoản bổ sung cho Doanh Nghiệp\nĐây là phần nội dung ẩn dành riêng cho doanh nghiệp thanh toán qua Credit.\n\nDoanh Nghiệp|Cấn COD:\n### Hợp đồng Doanh Nghiệp cấn trừ COD\n@[download](https://drive.google.com/file/d/4A2B3C4D5E6F/view "Tải hợp đồng Doanh Nghiệp - Cấn COD")\n\n@endselector',
+        Icon: 'help-circle',
+        Slug: 'demo-selector'
     }
 ];

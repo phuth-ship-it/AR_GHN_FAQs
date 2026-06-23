@@ -2158,3 +2158,126 @@ a:hover {
         flex-wrap: wrap;
     }
 }
+
+/* ==========================================================================
+   MARKDOWN @SELECTOR COMPONENT STYLING
+   ========================================================================== */
+.md-selector {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin: 1.75rem 0;
+    box-shadow: var(--shadow-md);
+    transition: background-color var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.md-selector:hover {
+    box-shadow: var(--shadow-premium);
+}
+
+/* Header container for dropdown fields */
+.md-selector-header {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 1.25rem;
+}
+
+/* Individual field container */
+.md-selector-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Label for select dropdowns */
+.md-selector-label {
+    font-family: var(--font-header);
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+/* Premium stylized select elements */
+.md-selector-select {
+    font-family: var(--font-primary);
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    background-color: var(--bg-page);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.65rem 1rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+    
+    /* Custom select styling */
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23f26522' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.1rem;
+    padding-right: 2.5rem;
+}
+
+[data-theme="dark"] .md-selector-select {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ff7a3c' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+}
+
+.md-selector-select:hover {
+    border-color: var(--color-primary);
+    background-color: var(--bg-surface-hover);
+}
+
+.md-selector-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Body container holding placeholder/contents */
+.md-selector-body {
+    position: relative;
+    min-height: 100px;
+}
+
+/* Placeholder card for unselected states */
+.md-selector-placeholder {
+    display: none;
+    background-color: var(--bg-page);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 2rem 1.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition: background-color var(--transition-normal), border-color var(--transition-normal);
+}
+
+.md-selector-placeholder.active {
+    display: block;
+    animation: mdSelectorFadeIn 0.3s ease;
+}
+
+/* Content block wrapping the matching markdown content */
+.md-selector-content {
+    animation: mdSelectorFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Fade-in animation for smooth content appearance */
+@keyframes mdSelectorFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+

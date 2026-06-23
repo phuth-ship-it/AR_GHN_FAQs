@@ -101,6 +101,14 @@ export function parseMarkdown(md) {
         return id;
     });
 
+    // ── Step 2d: Extract @selector ... @endselector blocks ──────────────────
+    const selectorBlocks = [];
+    escaped = escaped.replace(/@selector\s*\n([\s\S]*?)\n\s*@endselector/g, (match, content) => {
+        const id = `__SELECTOR_BLOCK_${selectorBlocks.length}__`;
+        selectorBlocks.push(renderSelector(content, selectorBlocks.length));
+        return id;
+    });
+
     // ── Step 3: Line-by-line block parsing ──────────────────────────────────
     const lines = escaped.split('\n');
     const htmlBlocks = [];
@@ -299,6 +307,10 @@ export function parseMarkdown(md) {
     // Restore slide blocks
     slideBlocks.forEach((slideHtml, idx) => {
         finalHtml = finalHtml.replace(`__SLIDE_BLOCK_${idx}__`, slideHtml);
+    });
+    // Restore selector blocks
+    selectorBlocks.forEach((selectorHtml, idx) => {
+        finalHtml = finalHtml.replace(`__SELECTOR_BLOCK_${idx}__`, selectorHtml);
     });
 
     // ── Step 5: Inline transformations ─────────────────────────────────────
@@ -516,6 +528,120 @@ function renderSlideCarousel(urlList) {
   </div>
   <div class="md-slide-counter"><span class="md-slide-cur">1</span> / ${urls.length}</div>
 </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// SELECTOR RENDERER
+// ---------------------------------------------------------------------------
+
+function unescapeHtml(html) {
+    if (!html) return '';
+    return html
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+}
+
+function renderSelector(content, index) {
+    const parts = content.split(/\n\s*---+\s*\n/);
+    const definitionPart = parts[0] || '';
+    const contentPart = parts.slice(1).join('\n---');
+
+    // Parse dropdown definitions
+    const defLines = definitionPart.split('\n');
+    const dropdowns = [];
+    let currentDropdown = null;
+    for (const line of defLines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (trimmed.endsWith(':')) {
+            currentDropdown = {
+                label: trimmed.slice(0, -1).trim(),
+                options: []
+            };
+            dropdowns.push(currentDropdown);
+        } else if (currentDropdown && (trimmed.startsWith('-') || trimmed.startsWith('*') || trimmed.startsWith('+'))) {
+            const optionText = trimmed.replace(/^[-*+]\s+/, '').trim();
+            if (optionText) {
+                currentDropdown.options.push(optionText);
+            }
+        }
+    }
+
+    // Helper to identify condition rows matching the dropdown values
+    function isConditionLine(line, dropdowns) {
+        const trimmed = line.trim();
+        if (!trimmed.endsWith(':')) return null;
+        const conditionText = trimmed.slice(0, -1).trim();
+        const optionParts = conditionText.split('|').map(s => s.trim());
+        if (optionParts.length !== dropdowns.length) return null;
+        
+        for (let i = 0; i < dropdowns.length; i++) {
+            if (!dropdowns[i].options.includes(optionParts[i])) {
+                return null;
+            }
+        }
+        return optionParts.join('|');
+    }
+
+    // Parse conditional content blocks
+    const contentLines = contentPart.split('\n');
+    const blocks = {};
+    let currentKey = null;
+
+    for (const line of contentLines) {
+        const matchedKey = isConditionLine(line, dropdowns);
+        if (matchedKey !== null) {
+            currentKey = matchedKey;
+            blocks[currentKey] = [];
+        } else if (currentKey !== null) {
+            blocks[currentKey].push(line);
+        }
+    }
+
+    // Generate dropdown controls HTML
+    let dropdownsHtml = '';
+    dropdowns.forEach((dd, ddIdx) => {
+        const ddLabel = unescapeHtml(dd.label);
+        dropdownsHtml += `
+            <div class="md-selector-field">
+                <label class="md-selector-label">${ddLabel}</label>
+                <select class="md-selector-select" data-dropdown-index="${ddIdx}" onchange="mdSelectorChange(this)">
+                    <option value="">-- Chọn ${ddLabel} --</option>
+                    ${dd.options.map(opt => {
+                        const optUnescaped = unescapeHtml(opt);
+                        return `<option value="${optUnescaped.replace(/"/g, '&quot;')}">${optUnescaped}</option>`;
+                    }).join('\n')}
+                </select>
+            </div>
+        `;
+    });
+
+    // Generate content panels HTML
+    let contentsHtml = '';
+    for (const key in blocks) {
+        const blockMarkdown = unescapeHtml(blocks[key].join('\n'));
+        const blockHtml = parseMarkdown(blockMarkdown);
+        contentsHtml += `
+            <div class="md-selector-content" data-key="${unescapeHtml(key).replace(/"/g, '&quot;')}" style="display: none;">
+                ${blockHtml}
+            </div>
+        `;
+    }
+
+    return `
+        <div class="md-selector" id="md-selector-${index}">
+            <div class="md-selector-header">
+                ${dropdownsHtml}
+            </div>
+            <div class="md-selector-body">
+                <div class="md-selector-placeholder active">Vui lòng chọn đầy đủ thông tin</div>
+                ${contentsHtml}
+            </div>
+        </div>
+    `;
 }
 
 // ---------------------------------------------------------------------------
@@ -816,6 +942,52 @@ document.addEventListener('click', (e) => {
         if (carousel) mdSlideGoTo(carousel, parseInt(dot.dataset.goto, 10));
     }
 });
+
+/**
+ * Selector dropdown selection change handler
+ */
+window.mdSelectorChange = function(selectEl) {
+    const selectorEl = selectEl.closest('.md-selector');
+    if (!selectorEl) return;
+    
+    const dropdowns = selectorEl.querySelectorAll('.md-selector-select');
+    const selectedValues = [];
+    let allSelected = true;
+    
+    dropdowns.forEach(select => {
+        if (!select.value) {
+            allSelected = false;
+        }
+        selectedValues.push(select.value);
+    });
+    
+    const placeholder = selectorEl.querySelector('.md-selector-placeholder');
+    const contentBlocks = selectorEl.querySelectorAll('.md-selector-content');
+    
+    // Hide all blocks
+    contentBlocks.forEach(block => {
+        block.style.display = 'none';
+    });
+    
+    if (!allSelected) {
+        if (placeholder) {
+            placeholder.textContent = 'Vui lòng chọn đầy đủ thông tin';
+            placeholder.style.display = 'block';
+        }
+    } else {
+        if (placeholder) placeholder.style.display = 'none';
+        const targetKey = selectedValues.join('|');
+        const activeBlock = selectorEl.querySelector(`.md-selector-content[data-key="${targetKey}"]`);
+        if (activeBlock) {
+            activeBlock.style.display = 'block';
+        } else {
+            if (placeholder) {
+                placeholder.textContent = 'Không tìm thấy nội dung phù hợp';
+                placeholder.style.display = 'block';
+            }
+        }
+    }
+};
 
 // ---------------------------------------------------------------------------
 // LIGHTBOX (Image zoom)
