@@ -96,9 +96,9 @@ export function renderStatementSearchPage(appContainer) {
 
     // ── Event listeners ──────────────────────────────────────
 
-    // Back button → navigate về category Xu GHN
+    // Back button → navigate về Trang chủ
     document.getElementById('btn-statement-back')?.addEventListener('click', () => {
-        navigate('/category/xu-ghn');
+        navigate('/');
     });
 
     // Search on button click

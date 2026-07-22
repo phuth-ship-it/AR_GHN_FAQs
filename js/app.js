@@ -54,7 +54,6 @@ async function handleRouteTransition(routeInfo) {
         state.isLoading = false;
         renderStatementSearchPage(appContainer);
         updateBreadcrumbs([
-            { name: 'Xu GHN', path: '/category/xu-ghn' },
             { name: 'Tra cứu sao kê', path: '/statement-search' }
         ]);
         return;
@@ -353,6 +352,16 @@ function renderHome() {
         </div>
     `).join('');
 
+    // Feature card: Tra cứu sao kê
+    const statementCardHtml = `
+        <div class="category-card feature-card-statement" data-action="statement-search">
+            <div class="category-card-icon"><i data-lucide="file-text"></i></div>
+            <h3 class="category-card-title">Tra cứu sao kê</h3>
+            <p class="category-card-desc">Kiểm tra trạng thái nạp Xu theo sao kê ngân hàng nhanh chóng.</p>
+            <span class="category-card-meta">Tra cứu</span>
+        </div>
+    `;
+
     appContainer.innerHTML = `
         <div class="hero">
             <h1>Trung tâm Hỗ trợ GHN</h1>
@@ -360,19 +369,28 @@ function renderHome() {
         </div>
         <div class="category-grid">
             ${categoriesHtml}
+            ${statementCardHtml}
         </div>
     `;
 
     refreshIcons();
 
-    // Attach click listeners to cards
-    const cards = appContainer.querySelectorAll('.category-card');
+    // Attach click listeners to category cards
+    const cards = appContainer.querySelectorAll('.category-card[data-slug]');
     cards.forEach(card => {
         card.addEventListener('click', () => {
             const slug = card.getAttribute('data-slug');
             navigate(`/category/${slug}`);
         });
     });
+
+    // Attach click listener to statement card
+    const statementCard = appContainer.querySelector('.feature-card-statement');
+    if (statementCard) {
+        statementCard.addEventListener('click', () => {
+            navigate('/statement-search');
+        });
+    }
 }
 
 // Render Category View (Topics List)
